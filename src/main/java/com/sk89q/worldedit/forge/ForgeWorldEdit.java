@@ -130,6 +130,9 @@ public class ForgeWorldEdit {
         FMLCommonHandler.instance()
             .bus()
             .register(ThreadSafeCache.getInstance());
+        FMLCommonHandler.instance()
+            .bus()
+            .register(SelectionVisualizer.getInstance());
 
         if (Loader.isModLoaded("neid")) {
             BaseBlock.MAX_DATA = (1 << 16) - 1;

@@ -149,6 +149,7 @@ public final class CommandManager {
             .registerMethods(new ToolUtilCommands(worldEdit))
             .registerMethods(new ToolCommands(worldEdit))
             .registerMethods(new UtilityCommands(worldEdit))
+            .registerMethods(new com.sk89q.worldedit.forge.command.SelectionVisualizationCommands(worldEdit))
             .register(
                 adapt(
                     new SelectionCommand(
