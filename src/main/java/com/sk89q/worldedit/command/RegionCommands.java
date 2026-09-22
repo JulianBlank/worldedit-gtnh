@@ -25,16 +25,19 @@ import static com.sk89q.worldedit.regions.Regions.maximumBlockY;
 import static com.sk89q.worldedit.regions.Regions.minimumBlockY;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import com.sk89q.minecraft.util.commands.Command;
+import com.sk89q.minecraft.util.commands.CommandContext;
 import com.sk89q.minecraft.util.commands.CommandPermissions;
 import com.sk89q.minecraft.util.commands.Logging;
 import com.sk89q.worldedit.BlockVector2D;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.IncompleteRegionException;
 import com.sk89q.worldedit.LocalSession;
+import com.sk89q.worldedit.MaxChangedBlocksException;
 import com.sk89q.worldedit.Vector;
 import com.sk89q.worldedit.Vector2D;
 import com.sk89q.worldedit.WorldEdit;
@@ -42,6 +45,7 @@ import com.sk89q.worldedit.WorldEditException;
 import com.sk89q.worldedit.blocks.BaseBlock;
 import com.sk89q.worldedit.entity.Player;
 import com.sk89q.worldedit.function.GroundFunction;
+import com.sk89q.worldedit.function.generator.ClipboardSpreadGenerator;
 import com.sk89q.worldedit.function.generator.FloraGenerator;
 import com.sk89q.worldedit.function.generator.ForestGenerator;
 import com.sk89q.worldedit.function.mask.ExistingBlockMask;
@@ -62,6 +66,7 @@ import com.sk89q.worldedit.regions.ConvexPolyhedralRegion;
 import com.sk89q.worldedit.regions.CuboidRegion;
 import com.sk89q.worldedit.regions.Region;
 import com.sk89q.worldedit.regions.RegionOperationException;
+import com.sk89q.worldedit.session.ClipboardHolder;
 import com.sk89q.worldedit.util.TreeGenerator;
 import com.sk89q.worldedit.util.TreeGenerator.TreeType;
 import com.sk89q.worldedit.util.command.binding.Range;
@@ -446,6 +451,104 @@ public class RegionCommands {
         Operations.completeLegacy(visitor);
 
         player.print(ground.getAffected() + " flora created.");
+    }
+
+    @Command(
+        aliases = { "/spread" },
+        usage = "[density] [on_world|on_surface] [rotate|static] [no_collide] [ground=<ids>]",
+        desc = "Spread the clipboard's contents over the region",
+        help = "Spreads a copy of the clipboard over the region, one copy per column.\n"
+            + "The options can be given in any order:\n"
+            + "  density: the percentage of the columns that receive a copy (0-100, default 100)\n"
+            + "  on_surface: the copies sit on top of the ground (default)\n"
+            + "  on_world: the copies float at a random height inside the region\n"
+            + "  static: every copy gets the same rotation (default)\n"
+            + "  rotate: every copy gets a random 90 degree rotation\n"
+            + "  no_collide: copies that would overlap a copy placed earlier are skipped\n"
+            + "  ground=<ids>: the block IDs that count as ground, for example ground=2,3,12 "
+            + "(default: the spread-ground-blocks setting)\n"
+            + "A copy is built on the first block of a column whose ID is a ground block. If the column "
+            + "does not contain one of them, the highest block of the column is used when more than "
+            + "three blocks in a row follow below it.\n"
+            + "Copies are centred on their own blocks, and collisions are worked out from the size of "
+            + "those blocks. Air blocks and entities in the clipboard are not copied.",
+        min = 0,
+        max = 5)
+    @CommandPermissions("worldedit.region.spread")
+    @Logging(REGION)
+    public void spread(Player player, LocalSession session, EditSession editSession, @Selection Region region,
+        CommandContext args) throws WorldEditException {
+        ClipboardHolder holder = session.getClipboard();
+
+        double density = 100;
+        boolean onSurface = true;
+        boolean rotate = false;
+        boolean noCollide = false;
+        Set<Integer> groundBlocks = worldEdit.getConfiguration().spreadGroundBlocks;
+
+        for (int i = 0; i < args.argsLength(); i++) {
+            String option = args.getString(i);
+
+            if (option.equalsIgnoreCase("on_surface") || option.equalsIgnoreCase("surface")) {
+                onSurface = true;
+            } else if (option.equalsIgnoreCase("on_world") || option.equalsIgnoreCase("world")
+                || option.equalsIgnoreCase("floating")
+                || option.equalsIgnoreCase("random")) {
+                    onSurface = false;
+                } else if (option.equalsIgnoreCase("static")) {
+                    rotate = false;
+                } else if (option.equalsIgnoreCase("rotate")) {
+                    rotate = true;
+                } else if (option.equalsIgnoreCase("collide")) {
+                    noCollide = false;
+                } else if (option.equalsIgnoreCase("no_collide") || option.equalsIgnoreCase("nocollide")) {
+                    noCollide = true;
+                } else if (option.startsWith("ground=")) {
+                    Set<Integer> parsed = new HashSet<Integer>();
+                    String list = option.substring("ground=".length())
+                        .trim();
+
+                    if (!list.isEmpty()) {
+                        for (String part : list.split(",")) {
+                            try {
+                                parsed.add(Integer.parseInt(part.trim()));
+                            } catch (NumberFormatException e) {
+                                player.printError("'" + part + "' is not a block ID.");
+                                return;
+                            }
+                        }
+                    }
+
+                    groundBlocks = parsed;
+                } else {
+                    try {
+                        density = Double.parseDouble(option);
+                    } catch (NumberFormatException e) {
+                        player.printError("Unknown option '" + option + "'.");
+                        return;
+                    }
+                }
+        }
+
+        if (density < 0 || density > 100) {
+            player.printError("Density must be a percentage between 0 and 100.");
+            return;
+        }
+
+        ClipboardSpreadGenerator generator = new ClipboardSpreadGenerator(
+            editSession,
+            holder,
+            groundBlocks,
+            rotate,
+            noCollide);
+
+        try {
+            generator.spread(region, density / 100, onSurface);
+        } catch (MaxChangedBlocksException e) {
+            player.printError("Max. blocks changed reached.");
+        }
+
+        player.print(generator.getCount() + " copies placed.");
     }
 
     @Command(
