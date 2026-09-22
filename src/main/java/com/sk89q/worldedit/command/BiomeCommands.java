@@ -45,7 +45,9 @@ import com.sk89q.worldedit.regions.CuboidRegion;
 import com.sk89q.worldedit.regions.FlatRegion;
 import com.sk89q.worldedit.regions.Region;
 import com.sk89q.worldedit.regions.Regions;
+import com.sk89q.worldedit.util.command.binding.Range;
 import com.sk89q.worldedit.util.command.binding.Switch;
+import com.sk89q.worldedit.util.command.parametric.Optional;
 import com.sk89q.worldedit.world.World;
 import com.sk89q.worldedit.world.biome.BaseBiome;
 import com.sk89q.worldedit.world.biome.BiomeData;
@@ -201,6 +203,46 @@ public class BiomeCommands {
         player.print(
             "Biomes were changed in " + visitor.getAffected()
                 + " columns. You may have to rejoin your game (or close and reopen your world) to see a change.");
+    }
+
+    @Command(
+        aliases = { "/biomechunk" },
+        usage = "<biome> [radius]",
+        desc = "Sets the biome of chunks around the player.",
+        min = 1,
+        max = 2)
+    @Logging(REGION)
+    @CommandPermissions("worldedit.biome.chunk")
+    public void setChunkBiome(Player player, BaseBiome target, @Optional("1") @Range(min = 0) int radius)
+        throws WorldEditException {
+        worldEdit.checkMaxRadius(radius * 16);
+
+        World world = player.getWorld();
+        Vector position = player.getBlockIn();
+        int centerChunkX = (int) Math.floor(position.getBlockX() / 16.0);
+        int centerChunkZ = (int) Math.floor(position.getBlockZ() / 16.0);
+        int affected = 0;
+
+        for (int chunkX = centerChunkX - radius; chunkX <= centerChunkX + radius; chunkX++) {
+            for (int chunkZ = centerChunkZ - radius; chunkZ <= centerChunkZ + radius; chunkZ++) {
+                Vector chunkPosition = new Vector(chunkX * 16, position.getBlockY(), chunkZ * 16);
+                world.checkLoadedChunk(chunkPosition);
+
+                for (int x = chunkX * 16; x < chunkX * 16 + 16; x++) {
+                    for (int z = chunkZ * 16; z < chunkZ * 16 + 16; z++) {
+                        if (world.setBiome(new Vector2D(x, z), target)) {
+                            affected++;
+                        }
+                    }
+                }
+            }
+        }
+
+        player.print(
+            "Biome changed in " + affected
+                + " columns across "
+                + ((radius * 2 + 1) * (radius * 2 + 1))
+                + " chunks. You may have to rejoin your game to see a change.");
     }
 
 }
