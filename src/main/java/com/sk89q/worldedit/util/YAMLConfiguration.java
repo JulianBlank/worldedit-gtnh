@@ -71,6 +71,7 @@ public class YAMLConfiguration extends LocalConfiguration {
         butcherMaxRadius = Math.max(-1, config.getInt("limits.butcher-radius.maximum", butcherMaxRadius));
 
         disallowedBlocks = new HashSet<Integer>(config.getIntList("limits.disallowed-blocks", null));
+        spreadGroundBlocks = new HashSet<Integer>(config.getIntList("limits.spread-ground-blocks", null));
         allowedDataCycleBlocks = new HashSet<Integer>(config.getIntList("limits.allowed-data-cycle-blocks", null));
 
         registerHelp = config.getBoolean("register-help", true);

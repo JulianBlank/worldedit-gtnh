@@ -50,8 +50,13 @@ public abstract class LocalConfiguration {
         // Doors also have this effect, but are not disallowed.
     };
 
+    protected static final int[] defaultSpreadGroundBlocks = new int[] { BlockID.STONE, BlockID.GRASS, BlockID.DIRT,
+        BlockID.COBBLESTONE, BlockID.SAND, BlockID.GRAVEL, BlockID.SANDSTONE, BlockID.MOSSY_COBBLESTONE,
+        BlockID.SNOW_BLOCK, BlockID.CLAY, BlockID.NETHERRACK, BlockID.SLOW_SAND, BlockID.MYCELIUM, BlockID.END_STONE };
+
     public boolean profile = false;
     public Set<Integer> disallowedBlocks = new HashSet<Integer>();
+    public Set<Integer> spreadGroundBlocks = new HashSet<Integer>();
     public int defaultChangeLimit = -1;
     public int maxChangeLimit = -1;
     public int defaultMaxPolygonalPoints = -1;

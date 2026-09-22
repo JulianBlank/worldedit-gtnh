@@ -78,6 +78,7 @@ public class PropertiesConfiguration extends LocalConfiguration {
 
         profile = getBool("profile", profile);
         disallowedBlocks = getIntSet("disallowed-blocks", defaultDisallowedBlocks);
+        spreadGroundBlocks = getIntSet("spread-ground-blocks", defaultSpreadGroundBlocks);
         defaultChangeLimit = getInt("default-max-changed-blocks", defaultChangeLimit);
         maxChangeLimit = getInt("max-changed-blocks", maxChangeLimit);
         defaultMaxPolygonalPoints = getInt("default-max-polygon-points", defaultMaxPolygonalPoints);

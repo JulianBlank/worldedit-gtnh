@@ -30,6 +30,7 @@ import com.sk89q.worldedit.WorldEditException;
 import com.sk89q.worldedit.blocks.BaseBlock;
 import com.sk89q.worldedit.blocks.BlockID;
 import com.sk89q.worldedit.command.tool.BrushTool;
+import com.sk89q.worldedit.command.tool.brush.BonemealBrush;
 import com.sk89q.worldedit.command.tool.brush.ButcherBrush;
 import com.sk89q.worldedit.command.tool.brush.ClipboardBrush;
 import com.sk89q.worldedit.command.tool.brush.CylinderBrush;
@@ -44,6 +45,10 @@ import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.function.mask.BlockMask;
 import com.sk89q.worldedit.function.pattern.BlockPattern;
 import com.sk89q.worldedit.function.pattern.Pattern;
+import com.sk89q.worldedit.regions.factory.CuboidRegionFactory;
+import com.sk89q.worldedit.regions.factory.CylinderRegionFactory;
+import com.sk89q.worldedit.regions.factory.RegionFactory;
+import com.sk89q.worldedit.regions.factory.SphereRegionFactory;
 import com.sk89q.worldedit.session.ClipboardHolder;
 import com.sk89q.worldedit.util.command.binding.Switch;
 import com.sk89q.worldedit.util.command.parametric.Optional;
@@ -258,5 +263,72 @@ public class BrushCommands {
         tool.setBrush(new ButcherBrush(flags), "worldedit.brush.butcher");
 
         player.print(String.format("Butcher brush equipped (%.0f).", radius));
+    }
+
+    @Command(
+        aliases = { "bonemeal", "bm" },
+        usage = "<cuboid|cylinder|sphere> [density] [radius]",
+        desc = "Choose the bone meal brush",
+        help = "Bonemeals the blocks inside the brush's region, as if you had right-clicked every one of them "
+            + "with bone meal in hand.\n"
+            + "Crops are grown, grass blocks sprout tall grass and flowers, and mycelium spreads mushrooms.\n"
+            + "Density is the percentage of the blocks that are bonemealed (0-100, default 100), where 100% "
+            + "bonemeals every block.\n"
+            + "Radius is the size of the region (default 5). Note that a cylinder is a single layer high.",
+        min = 1,
+        max = 3)
+    @CommandPermissions("worldedit.brush.bonemeal")
+    public void bonemealBrush(Player player, LocalSession session, EditSession editSession, CommandContext args)
+        throws WorldEditException {
+        String shapeName = args.getString(0);
+        RegionFactory regionFactory;
+
+        if (shapeName.equalsIgnoreCase("sphere")) {
+            regionFactory = new SphereRegionFactory();
+        } else if (shapeName.equalsIgnoreCase("cyl") || shapeName.equalsIgnoreCase("cylinder")) {
+            regionFactory = new CylinderRegionFactory(1);
+        } else if (shapeName.equalsIgnoreCase("cuboid")) {
+            regionFactory = new CuboidRegionFactory();
+        } else {
+            player.printError("Unknown shape '" + shapeName + "'. Try cuboid, cylinder or sphere.");
+            return;
+        }
+
+        double density = args.getDouble(1, 1000);
+        if (density < 0 || density > 1000) {
+            player.printError("Density must be a percentage between 0 and 1000.");
+            return;
+        }
+
+        double radius = args.getDouble(2, 5);
+        worldEdit.checkMaxBrushRadius(radius);
+
+        BrushTool tool = session.getBrushTool(player.getItemInHand());
+        tool.setSize(radius);
+        tool.setBrush(new BonemealBrush(regionFactory, density / 100), "worldedit.brush.bonemeal");
+
+        player.print(String.format("Bone meal brush equipped (%s, %.0f%%, radius %.1f).", shapeName, density, radius));
+    }
+
+    @Command(
+        aliases = { "place" },
+        usage = "",
+        flags = "ao",
+        desc = "Choose the clipboard placement brush",
+        help = "Chooses a brush that pastes the contents of the clipboard where you click.\n"
+            + "The -a flag makes it not paste air.\n"
+            + "The -o flag places the clipboard relative to where you stood when you copied it, "
+            + "instead of centering it on the block that you click.",
+        min = 0,
+        max = 0)
+    @CommandPermissions("worldedit.brush.place")
+    public void placeBrush(Player player, LocalSession session, EditSession editSession, @Switch('a') boolean ignoreAir,
+        @Switch('o') boolean usingOrigin) throws WorldEditException {
+        ClipboardHolder holder = session.getClipboard();
+
+        BrushTool tool = session.getBrushTool(player.getItemInHand());
+        tool.setBrush(new ClipboardBrush(holder, ignoreAir, usingOrigin), "worldedit.brush.place");
+
+        player.print("Clipboard placement brush equipped.");
     }
 }
