@@ -38,8 +38,10 @@ public final class SelectionVisualizer {
 
     private static final SelectionVisualizer INSTANCE = new SelectionVisualizer();
     private static final int REFRESH_INTERVAL = 5;
-    private static final int MAX_PARTICLES = 2048;
-    private static final double PARTICLE_SPACING = 1.0;
+    private static final int MAX_PARTICLES = 4096;
+    private static final double NEAR_PARTICLE_SPACING = 1.5;
+    private static final double FAR_PARTICLE_SPACING = 0.75;
+    private static final double DISTANCE_SCALE = 32.0;
 
     private final Set<UUID> enabled = new HashSet<UUID>();
     private int ticks;
@@ -114,7 +116,15 @@ public final class SelectionVisualizer {
     private void drawEdge(EntityPlayerMP player, double startX, double startY, double startZ, double endX, double endY,
         double endZ, int[] remaining) {
         double length = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2) + Math.pow(endZ - startZ, 2));
-        int count = Math.min(remaining[0], Math.max(1, (int) Math.ceil(length / PARTICLE_SPACING)) + 1);
+        double midpointX = (startX + endX) / 2;
+        double midpointY = (startY + endY) / 2;
+        double midpointZ = (startZ + endZ) / 2;
+        double distance = Math.sqrt(player.getDistanceSq(midpointX, midpointY, midpointZ));
+        int particleCount = Math.min(4, 1 + (int) (distance / DISTANCE_SCALE));
+        double spacing = Math.max(
+            FAR_PARTICLE_SPACING,
+            NEAR_PARTICLE_SPACING - Math.min(distance, DISTANCE_SCALE * 2) / DISTANCE_SCALE * 0.375);
+        int count = Math.min(remaining[0] / particleCount, Math.max(1, (int) Math.ceil(length / spacing)) + 1);
 
         for (int i = 0; i < count; i++) {
             double fraction = count == 1 ? 0 : (double) i / (count - 1);
@@ -122,13 +132,14 @@ public final class SelectionVisualizer {
                 player,
                 startX + (endX - startX) * fraction,
                 startY + (endY - startY) * fraction,
-                startZ + (endZ - startZ) * fraction);
+                startZ + (endZ - startZ) * fraction,
+                particleCount);
         }
-        remaining[0] -= count;
+        remaining[0] -= count * particleCount;
     }
 
-    private void sendParticle(EntityPlayerMP player, double x, double y, double z) {
+    private void sendParticle(EntityPlayerMP player, double x, double y, double z, int count) {
         player.playerNetServerHandler
-            .sendPacket(new S2APacketParticles("reddust", (float) x, (float) y, (float) z, 1, 0, 0, 1, 0));
+            .sendPacket(new S2APacketParticles("flame", (float) x, (float) y, (float) z, 0, 0, 0, 0, count));
     }
 }
